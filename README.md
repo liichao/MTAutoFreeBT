@@ -3,7 +3,9 @@
 
 # 用法：
 ```bash
-docker run -e QBURL='http://192.168.1.10:8080' -e QBUSER='user' -e QBPWD='password' -e APIKEY='apikey' -e DOWNLOADPATH='/path'  -e CYCLE=1800 -e RSS=url -e SPACE=80  shangling/mt-auto-free-to-qb:latest
+docker run -e QBURL='http://192.168.1.10:8080' -e QBUSER='user' \
+    -e QBPWD='password' -e APIKEY='apikey' -e DOWNLOADPATH='/path'  \
+    -e CYCLE=1800 -e RSS=url -e SPACE=80  shangling/mt-auto-free-to-qb:latest
 ```
 
 # 参数说明
