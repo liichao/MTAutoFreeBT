@@ -11,10 +11,12 @@ import argparse
 # 配置日志记录器
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 # 提取MT URL中的数字ID部分
 def extract_numeric_part(url):
     numeric_part = re.search(r'\d+', url).group()
     return numeric_part
+
 
 # 提取JSON响应中的size、discount和discountEndTime值
 def extract_values_from_json(response_json):
@@ -43,6 +45,8 @@ def get_json_response(payload):
         logging.warning(f'response信息为{response.text()}')
         logging.error(f'JSON解析失败：{e}')
         return None
+
+
 # 持久化保存QBittorrent的cookie
 def save_cookie(cookie):
     with open('../../mq-qb/qb_cookie.pickle', 'wb') as f:
@@ -60,6 +64,7 @@ def add_torrent(url):
         logging.info('种子添加成功！')
     else:
         logging.info('种子添加失败！')
+
 
 # 当磁盘小于80G时停止刷流
 def get_disk_space():
@@ -81,6 +86,7 @@ def get_disk_space():
     else:
         return False
 
+
 # 处理discount值为FREE的情况
 def handle_free_discount(payload):
     url = 'https://kp.m-team.cc/api/torrent/genDlToken'
@@ -98,6 +104,7 @@ def handle_free_discount(payload):
                 add_torrent(download_url)
     except requests.exceptions.RequestException as e:
         logging.error(f'请求失败：{e}，忽略添加下载')
+
 
 # 每隔一段时间访问MT获取RSS并添加种子到QBittorrent
 def access_mt_and_add_torrent():
@@ -127,8 +134,9 @@ def access_mt_and_add_torrent():
                             continue
                         else:
                             # to-do 异常json处理
-                            logging.info(f"种子{numeric_part}，大小为{'{:.2f}'.format(int(size)/1024/1024/1024)}G,状态为：{discount}")
-                            #logging.info(f"size: {size}, discount: {discount}, discount_end_time: {discount_end_time}")
+                            logging.info(
+                                f"种子{numeric_part}，大小为{'{:.2f}'.format(int(size) / 1024 / 1024 / 1024)}G,状态为：{discount}")
+                            # logging.info(f"size: {size}, discount: {discount}, discount_end_time: {discount_end_time}")
                             if int(size) < 34270510600:
                                 if discount in ['FREE', '_2X_FREE']:
                                     # 开始获取下载地址
@@ -150,16 +158,18 @@ if __name__ == '__main__':
     parser.add_argument('--qburl', default=os.environ.get('QBURL', 'http://192.168.66.10:10000'), help='QB 的网址')
     parser.add_argument('--qbuser', default=os.environ.get('QBUSER', 'admin'), help='QB账户')
     parser.add_argument('--qbpwd', default=os.environ.get('QBPWD', 'adminadmin'), help='QB密码')
-    parser.add_argument('--apikey', default=os.environ.get('APIKEY', '70390435-35fb-44e8-a207-fcd6be7099ef'), help='馒头的api key')
-    parser.add_argument('--downloadpath', default=os.environ.get('DOWNLOADPATH', '/download/PT刷流'), help='指定默认下载目录')
+    parser.add_argument('--apikey', default=os.environ.get('APIKEY', '70390435-35fb-44e8-a207-fcd6be7099ef'),
+                        help='馒头的api key')
+    parser.add_argument('--downloadpath', default=os.environ.get('DOWNLOADPATH', '/download/PT刷流'),
+                        help='指定默认下载目录')
     parser.add_argument('--cycle', default=os.environ.get('CYCLE', '1800'), help='循环周期 秒')
     parser.add_argument('--rss', default=os.environ.get('RSS', 'url'), help='馒头RSS地址')
     parser.add_argument('--space', default=os.environ.get('SPACE', 80), help='馒头RSS地址')
-     # 解析命令行参数
+    # 解析命令行参数
     args = parser.parse_args()
 
     # 获取参数值
-    global MT_APIKEY,QB_URL, DOWNLOADPATH, CYCLE,RSS,SPACE
+    global MT_APIKEY, QB_URL, DOWNLOADPATH, CYCLE, RSS, SPACE
     QB_URL = args.qburl
     QBUSER = args.qbuser
     QBPWD = args.qbpwd
