@@ -49,7 +49,7 @@ def get_json_response(payload):
 
 # 持久化保存QBittorrent的cookie
 def save_cookie(cookie):
-    with open('../../mq-qb/qb_cookie.pickle', 'wb') as f:
+    with open('/app/qb_cookie.pickle', 'wb') as f:
         pickle.dump(cookie, f)
 
 
@@ -73,7 +73,7 @@ def add_torrent(url):
 # 当磁盘小于80G时停止刷流
 def get_disk_space():
     url = f"{QB_URL}/api/v2/sync/maindata"
-    with open('../../mq-qb/qb_cookie.pickle', 'rb') as f:
+    with open('/app/qb_cookie.pickle', 'rb') as f:
         cookie = pickle.load(f)
     try:
         response = requests.request('GET', url, cookies={'SID': cookie})
@@ -190,7 +190,7 @@ if __name__ == '__main__':
 
     # 检查本地是否存在qb_cookie.pickle文件，如果存在则直接读取cookie
     if os.path.exists('qb_cookie.pickle'):
-        with open('../../mq-qb/qb_cookie.pickle', 'rb') as f:
+        with open('/app/qb_cookie.pickle', 'rb') as f:
             cookie = pickle.load(f)
     else:
         # 登录QBittorrent获取cookie
