@@ -59,11 +59,15 @@ def add_torrent(url):
     torrent_data = {'urls': url, 'savepath': DOWNLOADPATH}
     with open('../../mq-qb/qb_cookie.pickle', 'rb') as f:
         cookie = pickle.load(f)
-    response = requests.request("POST", add_torrent_url, data=torrent_data, cookies={'SID': cookie})
-    if response.status_code == 200:
-        logging.info('种子添加成功！')
-    else:
-        logging.info('种子添加失败！')
+    try:
+        response = requests.request("POST", add_torrent_url, data=torrent_data, cookies={'SID': cookie})
+        if response.status_code == 200:
+            logging.info('种子添加成功！')
+        else:
+            logging.info('种子添加失败！')
+    except requests.exceptions.RequestException as e:
+        logging.error(f"请求异常：{e}")
+        logging.error('种子添加失败，可能是链接QB异常！')
 
 
 # 当磁盘小于80G时停止刷流
@@ -71,20 +75,24 @@ def get_disk_space():
     url = f"{QB_URL}/api/v2/sync/maindata"
     with open('../../mq-qb/qb_cookie.pickle', 'rb') as f:
         cookie = pickle.load(f)
-    response = requests.request('GET', url, cookies={'SID': cookie})
-    if response.status_code == 200:
-        data = response.json()
-        disk_space = data['server_state']['free_space_on_disk']
-        try:
-            disk_space_gb = int(disk_space) / 1024 / 1024 / 1024
-        except ValueError:
-            print("磁盘空间转换为GB时出错，使用默认值")
-            disk_space_gb = 0  # 使用默认值
-        logging.info(f'当前磁盘空间为:{disk_space_gb}。')
-        if int(disk_space_gb) < SPACE:
-            return True
-    else:
-        return False
+    try:
+        response = requests.request('GET', url, cookies={'SID': cookie})
+        if response.status_code == 200:
+            data = response.json()
+            disk_space = data['server_state']['free_space_on_disk']
+            try:
+                disk_space_gb = int(disk_space) / 1024 / 1024 / 1024
+            except ValueError:
+                print("磁盘空间转换为GB时出错，使用默认值")
+                disk_space_gb = 0  # 使用默认值
+            logging.info(f'当前磁盘空间为:{disk_space_gb}。')
+            if int(disk_space_gb) < SPACE:
+                return True
+        else:
+            return False
+    except requests.exceptions.RequestException as e:
+        logging.error(f"请求异常：{e}")
+        logging.error('获取磁盘空间异常，可能是链接QB异常！')
 
 
 # 处理discount值为FREE的情况
@@ -147,6 +155,7 @@ def access_mt_and_add_torrent():
                 logging.error(f'请求失败：{e}')
             except ET.ParseError as e:
                 logging.error(f'XML解析失败：{e}')
+        logging.info(f'完成本次循环，等待下一次循环。')
         time.sleep(CYCLE)  # 等待半个小时
 
 
