@@ -40,10 +40,11 @@ def extract_numeric_part(url):
 # 提取JSON响应中的size、discount和discountEndTime值
 def extract_values_from_json(response_json):
     try:
+        name = response_json['data']['name']
         size = response_json['data']['size']
         discount = response_json['data']['status']['discount']
         discount_end_time = response_json['data']['status']['discountEndTime']
-        return size, discount, discount_end_time
+        return name,size, discount, discount_end_time
     except (KeyError, TypeError) as e:
         logging.error(f'提取值错误：{e}')
         return None, None, None
@@ -73,22 +74,53 @@ def save_cookie(cookie):
 
 
 # 添加种子下载地址到QBittorrent
-def add_torrent(url):
+def add_torrent(url,name):
+    req_method = GET_METHOD
     add_torrent_url = QB_URL + '/api/v2/torrents/add'
-    torrent_data = {'urls': url, 'savepath': DOWNLOADPATH}
     with open('/app/qb_cookie.pickle', 'rb') as f:
         cookie = pickle.load(f)
-    try:
-        response = requests.request("POST", add_torrent_url, data=torrent_data, cookies={'SID': cookie})
-        if response.status_code == 200:
-            status = '种子添加成功！'
-        else:
-            status = '种子添加失败！'
-        logging.info(status)
-        send_telegram_message(status)
-    except requests.exceptions.RequestException as e:
-        logging.error(f"请求异常：{e}")
-        logging.error('种子添加失败，可能是链接QB异常！')
+    torrent_data = {'urls': url, 'savepath': DOWNLOADPATH}
+    if req_method:
+        save_torrent = name+".torrent"
+        try:
+            logging.info(f'使用保存种子方式给QB服务器添加种子')
+            response = requests.get(url)
+            if response.status_code == 200:
+                with open(save_torrent, 'wb') as f:
+                    f.write(response.content)
+                logging.info(f"种子文件已保存到：{save_torrent}")
+                files = {'file': open(save_torrent, 'rb')}
+                try:
+                    response = requests.request("POST", add_torrent_url, cookies={'SID': cookie}, files=files)
+                    if response.status_code == 200:
+                        status = f'{name}种子添加成功！'
+                    else:
+                        status = f'{name}种子添加失败！'
+                    logging.info(status)
+                    send_telegram_message(status)
+                except requests.exceptions.RequestException as e:
+                    logging.error(f"请求异常：{e}")
+                    logging.error('种子添加失败，可能是链接QB异常！')
+                #  无论如何都删除种子
+                os.remove(save_torrent)
+            else:
+                logging.error("种子文件下载失败跳过！")
+        except requests.exceptions.RequestException as e:
+            logging.error(f'{name}种子下载异常：{e}')
+            logging.error(f'{name}种子下载异常，可能是网络异常！')
+    else:
+        try:
+            logging.info(f'使用推送URL给QB服务器方式添加种子')
+            response = requests.request("POST", add_torrent_url, data=torrent_data, cookies={'SID': cookie})
+            if response.status_code == 200:
+                status = f'{name}种子添加成功！'
+            else:
+                status = f'{name}种子添加失败！'
+            logging.info(status)
+            send_telegram_message(status)
+        except requests.exceptions.RequestException as e:
+            logging.error(f'{name}种子下载异常：{e}')
+            logging.error(f'{name}种子下载异常，可能是网络异常！')
 
 
 # 当磁盘小于80G时停止刷流
@@ -117,7 +149,7 @@ def get_disk_space():
 
 
 # 处理discount值为FREE的情况
-def handle_free_discount(payload):
+def handle_free_discount(payload,name):
     url = 'https://kp.m-team.cc/api/torrent/genDlToken'
     headers = {'x-api-key': MT_APIKEY}
     try:
@@ -130,7 +162,7 @@ def handle_free_discount(payload):
                 download_url = f'{download_url_info.split("?")[0]}?useHttps=true&type=ipv6&{download_url_info.split("?")[1]}'
                 logging.info(f'开始添加种子：{download_url}')
                 # 推送给QBittorrent
-                add_torrent(download_url)
+                add_torrent(download_url, name)
     except requests.exceptions.RequestException as e:
         logging.error(f'请求失败：{e}，忽略添加下载')
 
@@ -156,7 +188,7 @@ def access_mt_and_add_torrent():
                         payload = {'id': numeric_part}
                         time.sleep(random.randint(5, 10))
                         response_json = get_json_response(payload)
-                        size, discount, discount_end_time = extract_values_from_json(response_json)
+                        name, size, discount, discount_end_time = extract_values_from_json(response_json)
                         # 不需要判断discount_end_time，因为只有FREE或是2X FREE时才需要这个值
                         if size is None or discount is None:
                             logging.info(f"种子{numeric_part}非免费或请求异常，忽略种子，大小为{size},状态为：{discount}")
@@ -164,12 +196,12 @@ def access_mt_and_add_torrent():
                         else:
                             # to-do 异常json处理
                             logging.info(
-                                f"种子{numeric_part}，大小为{'{:.2f}'.format(int(size) / 1024 / 1024 / 1024)}G,状态为：{discount}")
+                                f"{name}种子{numeric_part}，大小为{'{:.2f}'.format(int(size) / 1024 / 1024 / 1024)}G,状态为：{discount}")
                             # logging.info(f"size: {size}, discount: {discount}, discount_end_time: {discount_end_time}")
                             if int(size) < 34270510600:
                                 if discount in ['FREE', '_2X_FREE']:
                                     # 开始获取下载地址
-                                    handle_free_discount(payload)
+                                    handle_free_discount(payload,name)
                 else:
                     logging.error('获取RSS失败！')
             except requests.exceptions.RequestException as e:
@@ -197,11 +229,12 @@ if __name__ == '__main__':
     parser.add_argument('--space', default=os.environ.get('SPACE', 80), help='空间小于多少后不再刷流')
     parser.add_argument('--bot_token', default=os.environ.get('BOT_TOKEN', 'BOT_TOKEN'), help='TG机器人')
     parser.add_argument('--chat_id', default=os.environ.get('CHAT_ID', '646111111'), help='TG机器人')
+    parser.add_argument('--get_method', default=os.environ.get('GET_METHOD', False), help='推送种子的方法')
     # 解析命令行参数
     args = parser.parse_args()
 
     # 获取参数值
-    global MT_APIKEY, QB_URL, DOWNLOADPATH, CYCLE, RSS, SPACE
+    global MT_APIKEY, QB_URL, DOWNLOADPATH, CYCLE, RSS, SPACE,GET_METHOD
     QB_URL = args.qburl
     QBUSER = args.qbuser
     QBPWD = args.qbpwd
@@ -212,6 +245,7 @@ if __name__ == '__main__':
     SPACE = int(args.space)
     BOT_TOKEN = args.bot_token
     CHAT_ID = int(args.chat_id)
+    GET_METHOD = args.get_method
 
     # 检查本地是否存在qb_cookie.pickle文件，如果存在则直接读取cookie
     if os.path.exists('qb_cookie.pickle'):
