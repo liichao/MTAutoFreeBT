@@ -12,6 +12,25 @@ import argparse
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
+# 添加Telegram通知
+def send_telegram_message(message):
+    if BOT_TOKEN != "BOT_TOKEN":
+        logging.info(f'发送消息通知到TG{message}')
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        params = {
+            "chat_id": CHAT_ID,
+            "text": message
+        }
+        try:
+            response = requests.get(url, params=params)
+            if response.status_code == 200:
+                logging.info(f"消息发送成功！")
+            else:
+                logging.info(f"消息发送失败！")
+        except requests.exceptions.RequestException as e:
+            logging.error(f"请求异常：{e}")
+            logging.error('发送TG通知失败，可能是网络异常！')
+
 # 提取MT URL中的数字ID部分
 def extract_numeric_part(url):
     numeric_part = re.search(r'\d+', url).group()
@@ -57,14 +76,16 @@ def save_cookie(cookie):
 def add_torrent(url):
     add_torrent_url = QB_URL + '/api/v2/torrents/add'
     torrent_data = {'urls': url, 'savepath': DOWNLOADPATH}
-    with open('../../mq-qb/qb_cookie.pickle', 'rb') as f:
+    with open('/app/qb_cookie.pickle', 'rb') as f:
         cookie = pickle.load(f)
     try:
         response = requests.request("POST", add_torrent_url, data=torrent_data, cookies={'SID': cookie})
         if response.status_code == 200:
-            logging.info('种子添加成功！')
+            status = '种子添加成功！'
         else:
-            logging.info('种子添加失败！')
+            status = '种子添加失败！'
+        logging.info(status)
+        send_telegram_message(status)
     except requests.exceptions.RequestException as e:
         logging.error(f"请求异常：{e}")
         logging.error('种子添加失败，可能是链接QB异常！')
@@ -173,7 +194,9 @@ if __name__ == '__main__':
                         help='指定默认下载目录')
     parser.add_argument('--cycle', default=os.environ.get('CYCLE', '1800'), help='循环周期 秒')
     parser.add_argument('--rss', default=os.environ.get('RSS', 'url'), help='馒头RSS地址')
-    parser.add_argument('--space', default=os.environ.get('SPACE', 80), help='馒头RSS地址')
+    parser.add_argument('--space', default=os.environ.get('SPACE', 80), help='空间小于多少后不再刷流')
+    parser.add_argument('--bot_token', default=os.environ.get('BOT_TOKEN', 'BOT_TOKEN'), help='TG机器人')
+    parser.add_argument('--chat_id', default=os.environ.get('CHAT_ID', '646111111'), help='TG机器人')
     # 解析命令行参数
     args = parser.parse_args()
 
@@ -187,6 +210,8 @@ if __name__ == '__main__':
     CYCLE = int(args.cycle)
     RSS = args.rss
     SPACE = int(args.space)
+    BOT_TOKEN = args.bot_token
+    CHAT_ID = int(args.chat_id)
 
     # 检查本地是否存在qb_cookie.pickle文件，如果存在则直接读取cookie
     if os.path.exists('qb_cookie.pickle'):
