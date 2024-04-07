@@ -213,6 +213,7 @@ def access_mt_and_add_torrent():
 
 
 if __name__ == '__main__':
+    # to-do 将参数调整为配置文件
     # 创建ArgumentParser对象
     parser = argparse.ArgumentParser(description="Description of your program")
 

@@ -1,7 +1,7 @@
 # MTAutoFreeBT
 基于馒头APIKEY的RSS刷流工具
 
-# 用法：
+# 直接docker使用用法：
 ```bash
 docker run -e QBURL='http://192.168.1.10:8080' -e QBUSER='user' \
     -e QBPWD='password' -e APIKEY='apikey' -e DOWNLOADPATH='/path'  \
