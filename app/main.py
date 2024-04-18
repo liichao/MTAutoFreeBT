@@ -47,7 +47,7 @@ def extract_values_from_json(response_json):
         return name,size, discount, discount_end_time
     except (KeyError, TypeError) as e:
         logging.error(f'提取值错误：{e}')
-        return None, None, None
+        return None, None, None,None
 
 
 # POST请求获取JSON响应
