@@ -47,7 +47,7 @@ def extract_values_from_json(response_json):
         return name,size, discount, discount_end_time
     except (KeyError, TypeError) as e:
         logging.error(f'提取值错误：{e}')
-        return None, None, None,None
+        return None, None, None, None
 
 
 # POST请求获取JSON响应
@@ -81,7 +81,9 @@ def add_torrent(url,name):
         cookie = pickle.load(f)
     torrent_data = {'urls': url, 'savepath': DOWNLOADPATH}
     if req_method:
-        save_torrent = name+".torrent"
+        # 因文件名中可能存在垃圾字符串导致保存失败，特将name.torrent修改为tmp.torrent
+        # save_torrent = name+".torrent"
+        save_torrent = "tmp.torrent"
         try:
             logging.info(f'使用保存种子方式给QB服务器添加种子')
             response = requests.get(url)
