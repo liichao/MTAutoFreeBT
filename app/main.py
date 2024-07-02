@@ -52,7 +52,7 @@ def extract_values_from_json(response_json):
 
 # POST请求获取JSON响应
 def get_json_response(payload):
-    url = 'https://kp.m-team.cc/api/torrent/detail'
+    url = 'https://api.m-team.cc/api/torrent/detail'
     headers = {'x-api-key': MT_APIKEY}
     try:
         # response = requests.post(url, json=payload, headers=headers)
@@ -152,7 +152,7 @@ def get_disk_space():
 
 # 处理discount值为FREE的情况
 def handle_free_discount(payload,name):
-    url = 'https://kp.m-team.cc/api/torrent/genDlToken'
+    url = 'https://api.m-team.cc/api/torrent/genDlToken'
     headers = {'x-api-key': MT_APIKEY}
     try:
         time.sleep(random.randint(5, 10))
