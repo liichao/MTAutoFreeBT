@@ -6,7 +6,7 @@ import logging
 dotenv.load_dotenv(verbose=True, override=True)
 from flood import flood_task, login, read_config, save_config
 
-CYCLE = int(os.environ.get("CYCLE", "1800"))
+CYCLE = int(float(os.environ.get("CYCLE", 0.5)) * 60 * 60)
 
 if __name__ == "__main__":
     read_config()
