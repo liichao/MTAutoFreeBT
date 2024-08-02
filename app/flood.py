@@ -303,11 +303,14 @@ def flood_task():
                 "size": size,
                 "url": download_url,
                 "discount": discount,
-                "discount_end_time": discount_end_time,
+                "discount_end_time": discount_end_time.strftime("%Y-%m-%d %H:%M:%S"),
             }
         )
         if disk_space <= SPACE:
             logging.info("磁盘空间不足，停止刷流")
+            send_telegram_message(
+                f"磁盘空间不足，停止刷流，当前剩余空间为{disk_space/1024/1024/1024:.2f}G"
+            )
             break
 
 
