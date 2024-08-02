@@ -5,7 +5,7 @@
 ```bash
 docker run -e QBURL='http://192.168.1.10:8080' -e QBUSER='user' \
     -e QBPWD='password' -e APIKEY='apikey' -e DOWNLOADPATH='/path'  \
-    -e CYCLE=1800 -e RSS=url -e SPACE=80 -e CHAT_ID=CHAT_ID -e BOT_TOKEN=BOT_TOKEN -e GET_METHOD=True shangling/mt-auto-free-to-qb:latest
+    -e CYCLE=1800 -e RSS=url -e SPACE=80 -e CHAT_ID=CHAT_ID -e BOT_TOKEN=BOT_TOKEN -e GET_METHOD=True shangling/mt-auto-free-to-qb:latest -v ./flood_data.json:/app/flood_data.json
 ```
 
 # 青龙面板使用用法：

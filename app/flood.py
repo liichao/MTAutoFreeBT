@@ -340,6 +340,8 @@ def read_config():
         return
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         flood_torrents = json.load(f)
+    if not isinstance(flood_torrents, list):
+        flood_torrents = []
 
 
 def save_config():
