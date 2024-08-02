@@ -334,7 +334,7 @@ def login():
         logging.error(f"QBittorrent登录失败，HTTP状态码: {response.status_code}")
         return False
     mt_session.headers.update({"x-api-key": APIKEY})
-    if PROXY is not None:
+    if PROXY:
         mt_session.proxies = {"http": PROXY, "https": PROXY}
     return True
 
