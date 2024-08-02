@@ -216,7 +216,9 @@ def flood_task():
         publish_time = item.find("pubDate").text
         publish_time = datetime.strptime(publish_time, "%a, %d %b %Y %H:%M:%S %Z")
         title = item.find("title").text
-        matches = re.findall(r"\[(\d+(\.\d+)?)\s(KB|MB|GB|TB|PB)\]", title)
+        matches = re.findall(
+            r"\[(\d+(\.\d+)?)\s(B|KB|MB|GB|TB|PB)\]", title.replace(",", "")
+        )
         if not matches:
             logging.info(
                 f"种子{torrent_id}大小解析失败，可能是生成的RSS链接未勾选[大小]，标题为：{title}"
