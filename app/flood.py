@@ -305,7 +305,11 @@ def flood_task():
                 "size": size,
                 "url": download_url,
                 "discount": discount,
-                "discount_end_time": discount_end_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "discount_end_time": (
+                    discount_end_time.strftime("%Y-%m-%d %H:%M:%S")
+                    if discount_end_time is not None
+                    else None
+                ),
             }
         )
         if disk_space <= SPACE:
