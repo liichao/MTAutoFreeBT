@@ -191,6 +191,9 @@ def flood_task():
         return
     elif disk_space <= SPACE:
         logging.info("磁盘空间不足，停止刷流")
+        send_telegram_message(
+            f"磁盘空间不足，停止刷流，当前剩余空间为{disk_space/1024/1024/1024:.2f}G"
+        )
         return
     try:
         response = mt_session.get(RSS)
