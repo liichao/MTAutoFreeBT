@@ -3,7 +3,7 @@ import time
 import dotenv
 import logging
 
-dotenv.load_dotenv(verbose=True)
+dotenv.load_dotenv(verbose=True, override=True)
 from flood import flood_task, login, read_config, save_config
 
 CYCLE = int(os.environ.get("CYCLE", "1800"))

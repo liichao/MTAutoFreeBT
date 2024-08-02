@@ -16,7 +16,7 @@ logging.basicConfig(
 QBURL = os.environ.get("QBURL", "http://192.168.66.10:10000")
 QBUSER = os.environ.get("QBUSER", "admin")
 QBPWD = os.environ.get("QBPWD", "adminadmin")
-MT_APIKEY = os.environ.get("APIKEY", "70390435-35fb-44e8-a207-fcd6be7099ef")
+APIKEY = os.environ.get("APIKEY", "70390435-35fb-44e8-a207-fcd6be7099ef")
 DOWNLOADPATH = os.environ.get("DOWNLOADPATH", "/download/PT刷流")
 
 RSS = os.environ.get("RSS", "url")
@@ -29,6 +29,8 @@ MIN_SIZE = int(float(os.environ.get("MIN_SIZE", 1)) * 1024 * 1024 * 1024)
 FREE_TIME = int(float(os.environ.get("FREE_TIME", 10)) * 60 * 60)
 PUBLISH_BEFORE = int(float(os.environ.get("PUBLISH_BEFORE", 10)) * 60 * 60)
 PROXY = os.environ.get("PROXY", None)
+TAGS = os.environ.get("TAGS", "MT刷流")
+LS_RATIO = float(os.environ.get("LS_RATIO", 1))
 
 DATA_FILE = "flood_data.json"
 
@@ -65,10 +67,13 @@ def get_torrent_detail(torrent_id):
         return None
     try:
         data = response.json()["data"]
+        print(data)
         name = data["name"]
         size = int(data["size"])
         discount = data["status"].get("discount", None)
         discount_end_time = data["status"].get("discountEndTime", None)
+        seeders = int(data["seeders"])
+        leechers = int(data["leechers"])
         if discount_end_time is not None:
             discount_end_time = datetime.strptime(
                 discount_end_time, "%Y-%m-%d %H:%M:%S"
@@ -77,14 +82,20 @@ def get_torrent_detail(torrent_id):
         logging.warning(f"response信息为{response.text}")
         logging.error(f"种子信息解析失败：{e}")
         return None
-    return name, size, discount, discount_end_time
+    return {
+        "name": name,
+        "size": size,
+        "discount": discount,
+        "discount_end_time": discount_end_time,
+        "seeders": seeders,
+        "leechers": leechers,
+    }
 
 
 # 添加种子下载地址到QBittorrent
 def add_torrent(url, name):
     global flood_torrents
     add_torrent_url = QBURL + "/api/v2/torrents/add"
-    torrent_data = {"urls": url, "savepath": DOWNLOADPATH}
     if GET_METHOD:
         logging.info(f"使用保存种子方式给QB服务器添加种子")
         try:
@@ -97,7 +108,12 @@ def add_torrent(url, name):
             return False
         try:
             response = qb_session.post(
-                add_torrent_url, files={"file": response.content}
+                add_torrent_url,
+                data={
+                    "torrents": response.content,
+                    "tags": TAGS,
+                    "savepath": DOWNLOADPATH,
+                },
             )
         except requests.exceptions.RequestException as e:
             logging.error(f"种子添加异常：{e}")
@@ -105,7 +121,10 @@ def add_torrent(url, name):
     else:
         logging.info(f"使用推送URL给QB服务器方式添加种子")
         try:
-            response = qb_session.post(add_torrent_url, data=torrent_data)
+            response = qb_session.post(
+                add_torrent_url,
+                data={"urls": url, "savepath": DOWNLOADPATH, "tags": TAGS},
+            )
         except requests.exceptions.RequestException as e:
             logging.error(f"种子添加异常：{e}")
             return False
@@ -236,10 +255,16 @@ def flood_task():
         detail = get_torrent_detail(torrent_id)
         if detail is None:
             continue
-        name, size, discount, discount_end_time = detail
-        if size is None or discount is None:
+
+        name = detail["name"]
+        discount = detail["discount"]
+        discount_end_time = detail["discount_end_time"]
+        seeders = detail["seeders"]
+        leechers = detail["leechers"]
+
+        if discount is None:
             logging.info(
-                f"种子{torrent_id}非免费或请求异常，忽略种子，大小为{size},状态为：{discount}"
+                f"种子{torrent_id}非免费或请求异常，忽略种子, 信息为：{detail}"
             )
             continue
         if discount not in ["FREE", "_2X_FREE"]:
@@ -253,6 +278,13 @@ def flood_task():
                 f"种子{torrent_id}剩余免费时间小于{FREE_TIME/60/60:.2f}小时，忽略种子"
             )
             continue
+        if seeders <= 0:
+            logging.info(f"种子{torrent_id}无人做种，忽略种子")
+            continue
+        if leechers / seeders <= LS_RATIO:
+            logging.info(f"种子{torrent_id}下载/做种比例小于{LS_RATIO}，忽略种子")
+            continue
+
         logging.info(
             f"{name}种子{torrent_id}，大小为{size/1024/1024/1024:.2f}G,状态为：{discount}"
         )
@@ -290,7 +322,7 @@ def login():
     if response.status_code != 200:
         logging.error(f"QBittorrent登录失败，HTTP状态码: {response.status_code}")
         return False
-    mt_session.headers.update({"x-api-key": MT_APIKEY})
+    mt_session.headers.update({"x-api-key": APIKEY})
     if PROXY is not None:
         mt_session.proxies = {"http": PROXY, "https": PROXY}
     return True
