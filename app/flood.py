@@ -185,7 +185,7 @@ def get_torrent_url(torrent_id):
 # 每隔一段时间访问MT获取RSS并添加种子到QBittorrent
 def flood_task():
     global flood_torrents
-    logging.info("开始获取馒头RSS数据")
+    logging.info("开始刷流")
     disk_space = get_disk_space()
     if disk_space is None:
         return
