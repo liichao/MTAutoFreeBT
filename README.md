@@ -2,10 +2,14 @@
 基于馒头APIKEY的RSS刷流工具
 
 # 直接docker使用用法：
+创建.env文件并定义对应环境变量，格式如下：
+```
+环境变量名1=环境变量值1
+环境变量名2=环境变量值2
+```
+创建docker容器并挂载.env文件和flood_data.json文件到容器内，示例：
 ```bash
-docker run -e QBURL='http://192.168.1.10:8080' -e QBUSER='user' \
-    -e QBPWD='password' -e APIKEY='apikey' -e DOWNLOADPATH='/path'  \
-    -e CYCLE=1800 -e RSS=url -e SPACE=80 -e CHAT_ID=CHAT_ID -e BOT_TOKEN=BOT_TOKEN -e GET_METHOD=True shangling/mt-auto-free-to-qb:latest -v ./flood_data.json:/app/flood_data.json
+docker run -e QBURL='http://192.168.1.10:8080' shangling/mt-auto-free-to-qb:latest -v ./flood_data.json:/app/flood_data.json -v ./.env:/app/.env
 ```
 
 # 青龙面板使用用法：
