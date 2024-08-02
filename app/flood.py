@@ -71,8 +71,8 @@ def get_torrent_detail(torrent_id):
         size = int(data["size"])
         discount = data["status"].get("discount", None)
         discount_end_time = data["status"].get("discountEndTime", None)
-        seeders = int(data["seeders"])
-        leechers = int(data["leechers"])
+        seeders = int(data["status"]["seeders"])
+        leechers = int(data["status"]["leechers"])
         if discount_end_time is not None:
             discount_end_time = datetime.strptime(
                 discount_end_time, "%Y-%m-%d %H:%M:%S"
