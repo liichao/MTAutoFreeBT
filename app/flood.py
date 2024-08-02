@@ -67,7 +67,6 @@ def get_torrent_detail(torrent_id):
         return None
     try:
         data = response.json()["data"]
-        print(data)
         name = data["name"]
         size = int(data["size"])
         discount = data["status"].get("discount", None)
