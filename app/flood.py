@@ -1,13 +1,17 @@
 import requests
 import time
 import xml.etree.ElementTree as ET
+from dateutil import parser
 import os
 import re
 import random
 import logging
 from datetime import datetime, timedelta
 import json
+import pytz
 
+# 时区映射信息
+tzinfos = {'CST': pytz.timezone('Asia/Shanghai')}
 # 配置日志记录器
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -19,6 +23,7 @@ QBPWD = os.environ.get("QBPWD", "adminadmin")
 APIKEY = os.environ.get("APIKEY", "70390435-35fb-44e8-a207-fcd6be7099ef")
 DOWNLOADPATH = os.environ.get("DOWNLOADPATH", "/download/PT刷流")
 
+SEND_URL = os.environ.get("SEND_URL", None)
 RSS = os.environ.get("RSS", "url")
 SPACE = int(float(os.environ.get("SPACE", 80)) * 1024 * 1024 * 1024)
 BOT_TOKEN = os.environ.get("BOT_TOKEN", None)
@@ -50,6 +55,24 @@ def send_telegram_message(message):
         response = requests.get(url, params=params)
     except requests.exceptions.RequestException as e:
         logging.error(f"发送TG通知失败，请求异常：{e}")
+        return
+    if response.status_code == 200:
+        logging.info("消息发送成功！")
+    else:
+        logging.info("消息发送失败！")
+
+
+# 添加Server酱3消息推送
+def send_server3_message(message):
+    if SEND_URL is None:
+        return
+    logging.info(f"发送消息通知到Server3{message}")
+    url = f"{SEND_URL}"
+    data = {"title": "M-Team 刷流", "desp": message}
+    try:
+        response = requests.post(url, json=data)
+    except requests.exceptions.RequestException as e:
+        logging.error(f"发送Server3通知失败，请求异常：{e}")
         return
     if response.status_code == 200:
         logging.info("消息发送成功！")
@@ -134,6 +157,7 @@ def add_torrent(url, name):
 
     logging.info(f"种子{name}添加成功！")
     send_telegram_message(f"种子{name}添加成功！")
+    send_server3_message(f"种子{name}添加成功！")
     return True
 
 
@@ -191,7 +215,10 @@ def flood_task():
     elif disk_space <= SPACE:
         logging.info("磁盘空间不足，停止刷流")
         send_telegram_message(
-            f"磁盘空间不足，停止刷流，当前剩余空间为{disk_space/1024/1024/1024:.2f}G"
+            f"磁盘空间不足，停止刷流，当前剩余空间为{disk_space / 1024 / 1024 / 1024:.2f}G"
+        )
+        send_server3_message(
+            f"磁盘空间不足，停止刷流，当前剩余空间为{disk_space / 1024 / 1024 / 1024:.2f}G"
         )
         return
     try:
@@ -214,7 +241,7 @@ def flood_task():
         link = item.find("link").text
         torrent_id = re.search(r"\d+$", link).group()
         publish_time = item.find("pubDate").text
-        publish_time = datetime.strptime(publish_time, "%a, %d %b %Y %H:%M:%S %Z")
+        publish_time = parser.parse(publish_time,tzinfos=tzinfos)
         title = item.find("title").text
         matches = re.findall(
             r"\[(\d+(\.\d+)?)\s(B|KB|MB|GB|TB|PB)\]", title.replace(",", "")
@@ -234,24 +261,26 @@ def flood_task():
             logging.info(f"种子{torrent_id}已经添加过，跳过")
             continue
         # 如果发布时间超过PUBLISH_BEFORE则跳过
-        if datetime.now() - publish_time > timedelta(seconds=PUBLISH_BEFORE):
+        local_timezone = pytz.timezone('Asia/Shanghai')
+        now_with_tz = datetime.now(local_timezone)
+        if now_with_tz - publish_time > timedelta(seconds=PUBLISH_BEFORE):
             logging.info(
-                f"种子{torrent_id}发布时间超过{PUBLISH_BEFORE/60/60:.2f}小时，跳过"
+                f"种子{torrent_id}发布时间超过{PUBLISH_BEFORE / 60 / 60:.2f}小时，跳过"
             )
             continue
         if size > MAX_SIZE:
             logging.info(
-                f"种子{torrent_id}大小超过{MAX_SIZE/1024/1024/1024:.2f}G，忽略种子"
+                f"种子{torrent_id}大小超过{MAX_SIZE / 1024 / 1024 / 1024:.2f}G，忽略种子"
             )
             continue
         if size < MIN_SIZE:
             logging.info(
-                f"种子{torrent_id}大小小于{MIN_SIZE/1024/1024/1024:.2f}G，忽略种子"
+                f"种子{torrent_id}大小小于{MIN_SIZE / 1024 / 1024 / 1024:.2f}G，忽略种子"
             )
             continue
         if disk_space - size < SPACE:
             logging.info(
-                f"种子{torrent_id}大小为{size}，下载后磁盘空间将小于{SPACE/1024/1024/1024:.2f}G，忽略种子"
+                f"种子{torrent_id}大小为{size}，下载后磁盘空间将小于{SPACE / 1024 / 1024 / 1024:.2f}G，忽略种子"
             )
             continue
         logging.info(f"开始获取种子{torrent_id}信息")
@@ -275,11 +304,11 @@ def flood_task():
             logging.info(f"种子{torrent_id}非免费资源，忽略种子，状态为：{discount}")
             continue
         if (
-            discount_end_time is not None
-            and discount_end_time < datetime.now() + timedelta(seconds=FREE_TIME)
+                discount_end_time is not None
+                and discount_end_time < datetime.now() + timedelta(seconds=FREE_TIME)
         ):
             logging.info(
-                f"种子{torrent_id}剩余免费时间小于{FREE_TIME/60/60:.2f}小时，忽略种子"
+                f"种子{torrent_id}剩余免费时间小于{FREE_TIME / 60 / 60:.2f}小时，忽略种子"
             )
             continue
         if seeders <= 0:
@@ -290,7 +319,7 @@ def flood_task():
             continue
 
         logging.info(
-            f"{name}种子{torrent_id}，大小为{size/1024/1024/1024:.2f}G,状态为：{discount}"
+            f"{name}种子{torrent_id}，大小为{size / 1024 / 1024 / 1024:.2f}G,状态为：{discount}"
         )
         time.sleep(random.randint(5, 10))
         download_url = get_torrent_url(torrent_id)
@@ -317,7 +346,10 @@ def flood_task():
         if disk_space <= SPACE:
             logging.info("磁盘空间不足，停止刷流")
             send_telegram_message(
-                f"磁盘空间不足，停止刷流，当前剩余空间为{disk_space/1024/1024/1024:.2f}G"
+                f"磁盘空间不足，停止刷流，当前剩余空间为{disk_space / 1024 / 1024 / 1024:.2f}G"
+            )
+            send_telegram_message(
+                f"磁盘空间不足，停止刷流，当前剩余空间为{disk_space / 1024 / 1024 / 1024:.2f}G"
             )
             break
 
