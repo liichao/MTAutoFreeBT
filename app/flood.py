@@ -36,7 +36,7 @@ PUBLISH_BEFORE = int(float(os.environ.get("PUBLISH_BEFORE", 24)) * 60 * 60)
 PROXY = os.environ.get("PROXY", None)
 TAGS = os.environ.get("TAGS", "MT刷流")
 LS_RATIO = float(os.environ.get("LS_RATIO", 1))
-
+IPV6 = os.environ.get("IPV6", False)
 DATA_FILE = "flood_data.json"
 
 qb_session = requests.Session()
@@ -118,7 +118,7 @@ def get_torrent_detail(torrent_id):
 def add_torrent(url, name):
     global flood_torrents
     add_torrent_url = QBURL + "/api/v2/torrents/add"
-    if GET_METHOD:
+    if GET_METHOD == "True":
         logging.info(f"使用保存种子方式给QB服务器添加种子")
         try:
             response = mt_session.get(url)
@@ -145,7 +145,10 @@ def add_torrent(url, name):
         try:
             response = qb_session.post(
                 add_torrent_url,
-                data={"urls": url, "savepath": DOWNLOADPATH, "tags": TAGS},
+                data={"urls": url,
+                      "tags": TAGS,
+                      "savepath": DOWNLOADPATH,
+                      },
             )
         except requests.exceptions.RequestException as e:
             logging.error(f"种子添加异常：{e}")
@@ -195,9 +198,16 @@ def get_torrent_url(torrent_id):
         return None
     try:
         data = response.json()["data"]
-        download_url = (
-            f'{data.split("?")[0]}?useHttps=true&type=ipv6&{data.split("?")[1]}'
-        )
+        print(IPV6)
+        if IPV6 == "True":
+            download_url = (
+                f'{data.split("?")[0]}?useHttps=true&type=ipv6&{data.split("?")[1]}'
+            )
+        else:
+
+            download_url = (
+                f'{data.split("?")[0]}?useHttps=true&type=ipv4&{data.split("?")[1]}'
+            )
     except (KeyError, ValueError) as e:
         logging.warning(f"response信息为{response.text}")
         logging.error(f"种子地址解析失败：{e}")
@@ -241,7 +251,7 @@ def flood_task():
         link = item.find("link").text
         torrent_id = re.search(r"\d+$", link).group()
         publish_time = item.find("pubDate").text
-        publish_time = parser.parse(publish_time,tzinfos=tzinfos)
+        publish_time = parser.parse(publish_time, tzinfos=tzinfos)
         title = item.find("title").text
         matches = re.findall(
             r"\[(\d+(\.\d+)?)\s(B|KB|MB|GB|TB|PB)\]", title.replace(",", "")

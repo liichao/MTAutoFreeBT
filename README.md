@@ -38,6 +38,7 @@ docker run -e QBURL='http://192.168.1.10:8080' shangling/mt-auto-free-to-qb:late
 | PROXY          | 配置访问MT的代理地址，如`http://127.0.0.1:7890`，不需要代理请勿添加此变量 | None                     | 是     |
 | TAGS           | 配置刷流的种子的TAG，多个TAG用`,`分隔，如`tag1,tag2`              | MT刷流                   | 是     |
 | LS_RATIO       | 配置刷流的种子的最低`下载数/做种数`比例，小于此值不推送                     | 1.0                      | 是     |
+|IPV6| 配置是否使用IPV6,不使用则默认为IPV4                            |True|是|
 
 
 
