@@ -11,7 +11,7 @@ import json
 import pytz
 
 # 时区映射信息
-tzinfos = {'CST': pytz.timezone('Asia/Shanghai')}
+tzinfos = {"CST": pytz.timezone("Asia/Shanghai")}
 # 配置日志记录器
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -129,14 +129,18 @@ def add_torrent(url, name):
             logging.error(f"种子文件下载失败，HTTP状态码: {response.status_code}")
             return False
         try:
-            response = qb_session.post(
-                add_torrent_url,
-                data={
-                    "torrents": response.content,
-                    "tags": TAGS,
-                    "savepath": DOWNLOADPATH,
-                },
-            )
+            # 正确构建multipart/form-data请求
+            files = {
+                # 使用元组格式: (filename, file_content, content_type)
+                "torrents": (
+                    f"{name}.torrent",
+                    response.content,
+                    "application/x-bittorrent",
+                )
+            }
+            data = {"tags": TAGS, "savepath": DOWNLOADPATH}
+            # 使用files参数传递文件数据
+            response = qb_session.post(add_torrent_url, files=files, data=data)
         except requests.exceptions.RequestException as e:
             logging.error(f"种子添加异常：{e}")
             return False
@@ -145,10 +149,11 @@ def add_torrent(url, name):
         try:
             response = qb_session.post(
                 add_torrent_url,
-                data={"urls": url,
-                      "tags": TAGS,
-                      "savepath": DOWNLOADPATH,
-                      },
+                data={
+                    "urls": url,
+                    "tags": TAGS,
+                    "savepath": DOWNLOADPATH,
+                },
             )
         except requests.exceptions.RequestException as e:
             logging.error(f"种子添加异常：{e}")
@@ -271,7 +276,7 @@ def flood_task():
             logging.info(f"种子{torrent_id}已经添加过，跳过")
             continue
         # 如果发布时间超过PUBLISH_BEFORE则跳过
-        local_timezone = pytz.timezone('Asia/Shanghai')
+        local_timezone = pytz.timezone("Asia/Shanghai")
         now_with_tz = datetime.now(local_timezone)
         if now_with_tz - publish_time > timedelta(seconds=PUBLISH_BEFORE):
             logging.info(
@@ -314,8 +319,8 @@ def flood_task():
             logging.info(f"种子{torrent_id}非免费资源，忽略种子，状态为：{discount}")
             continue
         if (
-                discount_end_time is not None
-                and discount_end_time < datetime.now() + timedelta(seconds=FREE_TIME)
+            discount_end_time is not None
+            and discount_end_time < datetime.now() + timedelta(seconds=FREE_TIME)
         ):
             logging.info(
                 f"种子{torrent_id}剩余免费时间小于{FREE_TIME / 60 / 60:.2f}小时，忽略种子"
